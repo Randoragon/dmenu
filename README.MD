@@ -7,6 +7,7 @@ release.
 ## Applied Patches
 
 - [fuzzymatch](https://tools.suckless.org/dmenu/patches/fuzzymatch/)
+- [fuzzyhighlight](https://tools.suckless.org/dmenu/patches/fuzzyhighlight/)
 
 ## Requirements
 
