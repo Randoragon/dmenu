@@ -8,6 +8,7 @@ release.
 
 - [fuzzymatch](https://tools.suckless.org/dmenu/patches/fuzzymatch/)
 - [fuzzyhighlight](https://tools.suckless.org/dmenu/patches/fuzzyhighlight/)
+- [multi selection](https://tools.suckless.org/dmenu/patches/multi-selection/)
 
 ## Requirements
 
