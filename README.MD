@@ -4,6 +4,10 @@ This repo holds my fork of dmenu - the efficient dynamic menu for X.
 The version of dmenu which was originally forked is the stable 5.0
 release.
 
+## Applied Patches
+
+- [fuzzymatch](https://tools.suckless.org/dmenu/patches/fuzzymatch/)
+
 ## Requirements
 
 In order to build dmenu you need the Xlib header files.
