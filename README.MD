@@ -11,7 +11,7 @@ Some patches may have been modified by hand to fit my needs better.
 - [fuzzymatch](https://tools.suckless.org/dmenu/patches/fuzzymatch/)
 - [highlight](https://tools.suckless.org/dmenu/patches/highlight/)
 - [fuzzyhighlight](https://tools.suckless.org/dmenu/patches/fuzzyhighlight/)
-- [multi selection](https://tools.suckless.org/dmenu/patches/multi-selection/)
+- [mouse support](https://tools.suckless.org/dmenu/patches/mouse-support/)
 - [numbers](https://tools.suckless.org/dmenu/patches/numbers/)
 
 ## Requirements

@@ -36,7 +36,7 @@ enum { SchemeNorm, SchemeSel, SchemeNormHighlight, SchemeSelHighlight,
 struct item {
 	char *text;
 	struct item *left, *right;
- 	int id; /* for multiselect */
+	int out;
 	double distance;
 };
 
@@ -52,9 +52,6 @@ static struct item *matches, *matchend;
 static struct item *prev, *curr, *next, *sel;
 static int mon = -1, screen;
 
-static int *selid = NULL;
-static unsigned int selidsize = 0;
-
 static Atom clip, utf8;
 static Display *dpy;
 static Window root, parentwin, win;
@@ -67,15 +64,6 @@ static Clr *scheme[SchemeLast];
 
 static int (*fstrncmp)(const char *, const char *, size_t) = strncmp;
 static char *(*fstrstr)(const char *, const char *) = strstr;
-
-static int
-issel(size_t id)
-{
-	for (int i = 0;i < selidsize;i++)
-		if (selid[i] == id)
-			return 1;
-	return 0;
-}
 
 static void
 appenditem(struct item *item, struct item **list, struct item **last)
@@ -119,7 +107,6 @@ cleanup(void)
 	drw_free(drw);
 	XSync(dpy, False);
 	XCloseDisplay(dpy);
-	free(selid);
 }
 
 static char *
@@ -213,7 +200,7 @@ drawitem(struct item *item, int x, int y, int w)
 	int r;
 	if (item == sel)
 		drw_setscheme(drw, scheme[SchemeSel]);
-	else if (issel(item->id))
+	else if (item->out)
 		drw_setscheme(drw, scheme[SchemeOut]);
 	else
 		drw_setscheme(drw, scheme[SchemeNorm]);
@@ -567,20 +554,6 @@ keypress(XKeyEvent *ev)
 			goto draw;
 		case XK_Return:
 		case XK_KP_Enter:
-			if (sel && issel(sel->id)) {
-				for (int i = 0;i < selidsize;i++)
-					if (selid[i] == sel->id)
-						selid[i] = -1;
-			} else {
-				for (int i = 0;i < selidsize;i++)
-					if (selid[i] == -1) {
-						selid[i] = sel->id;
-						return;
-					}
-				selidsize++;
-				selid = realloc(selid, (selidsize + 1) * sizeof(int));
-				selid[selidsize - 1] = sel->id;
-			}
 			break;
 		case XK_bracketleft:
 			cleanup();
@@ -678,17 +651,13 @@ insert:
 		break;
 	case XK_Return:
 	case XK_KP_Enter:
+		puts((sel && !(ev->state & ShiftMask)) ? sel->text : text);
 		if (!(ev->state & ControlMask)) {
-			for (int i = 0;i < selidsize;i++)
-				if (selid[i] != -1 && (!sel || sel->id != selid[i]))
-					puts(items[selid[i]].text);
-			if (sel && !(ev->state & ShiftMask))
-				puts(sel->text);
-			else
-				puts(text);
 			cleanup();
 			exit(0);
 		}
+		if (sel)
+			sel->out = 1;
 		break;
 	case XK_Right:
 		if (text[cursor] != '\0') {
@@ -716,6 +685,119 @@ insert:
 
 draw:
 	drawmenu();
+}
+
+static void
+buttonpress(XEvent *e)
+{
+	struct item *item;
+	XButtonPressedEvent *ev = &e->xbutton;
+	int x = 0, y = 0, h = bh, w;
+
+	if (ev->window != win)
+		return;
+
+	/* right-click: exit */
+	if (ev->button == Button3)
+		exit(1);
+
+	if (prompt && *prompt)
+		x += promptw;
+
+	/* input field */
+	w = (lines > 0 || !matches) ? mw - x : inputw;
+
+	/* left-click on input: clear input,
+	 * NOTE: if there is no left-arrow the space for < is reserved so
+	 *       add that to the input width */
+	if (ev->button == Button1 &&
+	   ((lines <= 0 && ev->x >= 0 && ev->x <= x + w +
+	   ((!prev || !curr->left) ? TEXTW("<") : 0)) ||
+	   (lines > 0 && ev->y >= y && ev->y <= y + h))) {
+		insert(NULL, -cursor);
+		drawmenu();
+		return;
+	}
+	/* middle-mouse click: paste selection */
+	if (ev->button == Button2) {
+		XConvertSelection(dpy, (ev->state & ShiftMask) ? clip : XA_PRIMARY,
+		                  utf8, utf8, win, CurrentTime);
+		drawmenu();
+		return;
+	}
+	/* scroll up */
+	if (ev->button == Button4 && prev) {
+		sel = curr = prev;
+		calcoffsets();
+		drawmenu();
+		return;
+	}
+	/* scroll down */
+	if (ev->button == Button5 && next) {
+		sel = curr = next;
+		calcoffsets();
+		drawmenu();
+		return;
+	}
+	if (ev->button != Button1)
+		return;
+	if (ev->state & ~ControlMask)
+		return;
+	if (lines > 0) {
+		/* vertical list: (ctrl)left-click on item */
+		w = mw - x;
+		for (item = curr; item != next; item = item->right) {
+			y += h;
+			if (ev->y >= y && ev->y <= (y + h)) {
+				puts(item->text);
+				if (!(ev->state & ControlMask))
+					exit(0);
+				sel = item;
+				if (sel) {
+					sel->out = 1;
+					drawmenu();
+				}
+				return;
+			}
+		}
+	} else if (matches) {
+		/* left-click on left arrow */
+		x += inputw;
+		w = TEXTW("<");
+		if (prev && curr->left) {
+			if (ev->x >= x && ev->x <= x + w) {
+				sel = curr = prev;
+				calcoffsets();
+				drawmenu();
+				return;
+			}
+		}
+		/* horizontal list: (ctrl)left-click on item */
+		for (item = curr; item != next; item = item->right) {
+			x += w;
+			w = MIN(TEXTW(item->text), mw - x - TEXTW(">"));
+			if (ev->x >= x && ev->x <= x + w) {
+				puts(item->text);
+				if (!(ev->state & ControlMask))
+					exit(0);
+				sel = item;
+				if (sel) {
+					sel->out = 1;
+					drawmenu();
+				}
+				return;
+			}
+		}
+		/* left-click on right arrow */
+		w = TEXTW(">");
+		x = mw - w;
+		if (next && ev->x >= x && ev->x <= x + w) {
+			sel = curr = next;
+			calcoffsets();
+			drawmenu();
+			return;
+		}
+	}
 }
 
 static void
@@ -752,7 +834,7 @@ readstdin(void)
 			*p = '\0';
 		if (!(items[i].text = strdup(buf)))
 			die("cannot strdup %u bytes:", strlen(buf) + 1);
-		items[i].id = i; /* for multiselect */
+		items[i].out = 0;
 		drw_font_getexts(drw->fonts, buf, strlen(buf), &tmpmax, NULL);
 		if (tmpmax > inputw) {
 			inputw = tmpmax;
@@ -779,6 +861,9 @@ run(void)
 				break;
 			cleanup();
 			exit(1);
+		case ButtonPress:
+			buttonpress(&ev);
+			break;
 		case Expose:
 			if (ev.xexpose.count == 0)
 				drw_map(drw, win, 0, 0, mw, mh);
@@ -876,7 +961,8 @@ setup(void)
 	/* create menu window */
 	swa.override_redirect = True;
 	swa.background_pixel = scheme[SchemeNorm][ColBg].pixel;
-	swa.event_mask = ExposureMask | KeyPressMask | VisibilityChangeMask;
+	swa.event_mask = ExposureMask | KeyPressMask | VisibilityChangeMask |
+	                 ButtonPressMask;
 	win = XCreateWindow(dpy, parentwin, x, y, mw, mh, 0,
 	                    CopyFromParent, CopyFromParent, CopyFromParent,
 	                    CWOverrideRedirect | CWBackPixel | CWEventMask, &swa);
