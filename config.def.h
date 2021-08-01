@@ -5,8 +5,11 @@ static int topbar = 1;        /* -b  option; if 0, dmenu appears at bottom      
 static int fuzzy  = 0;        /* -F  option; if 0, dmenu doesn't use fuzzy matching */
 /* -fn option overrides fonts[0]; default X11 font or font set */
 static const char *fonts[] = {
-    "Bitstream Vera Sans Mono:size=10",
-    "JoyPixels:size=10",
+    "Bitstream Vera Sans Mono:size=11:antialias=true",
+    "Font Awesome 5 Free Solid:fontformat=truetype:size=11:antialias=true",
+    "Font Awesome 5 Brands Regular:fontformat=truetype:size=11:antialias=true",
+    "JoyPixels:size=11:antialias=true",
+    "DejaVu Sans Mono:size=11:antialias=true",
 };
 static const char *prompt      = NULL;      /* -p  option; prompt to the left of input field */
 static const char *colors[SchemeLast][2] = {
