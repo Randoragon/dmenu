@@ -13,6 +13,7 @@ Some patches may have been modified by hand to fit my needs better.
 - [fuzzyhighlight](https://tools.suckless.org/dmenu/patches/fuzzyhighlight/)
 - [mouse support](https://tools.suckless.org/dmenu/patches/mouse-support/)
 - [numbers](https://tools.suckless.org/dmenu/patches/numbers/)
+- [instant](https://tools.suckless.org/dmenu/patches/instant/)
 
 ## Requirements
 
